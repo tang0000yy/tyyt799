@@ -1346,8 +1346,8 @@ async function loadCloud(silent){
  cloudBusy=true;
  try{
   if(cfg.provider==='supabase'){
-   const w=await cFetch(cfg.sbUrl+'/rest/v1/works?select=*&room=eq.'+cfg.room+'&order=ts.asc','GET');
-   const v=await cFetch(cfg.sbUrl+'/rest/v1/votes?select=*&room=eq.'+cfg.room,'GET');
+   const w=await cFetch(cfg.sbUrl+'/rest/v1/works?select=*&room=eq.'+cfg.room+'&order=ts.asc','GET',undefined,sbHeaders(cfg));
+   const v=await cFetch(cfg.sbUrl+'/rest/v1/votes?select=*&room=eq.'+cfg.room,'GET',undefined,sbHeaders(cfg));
    cloudWorks=(w||[]).map(function(r){
     return{key:String(r.id),fromId:r.fromid,mode:r.mode,author:r.author,title:r.title,note:r.note,letter:r.letter,photo:r.photo,ts:r.ts};
    });
@@ -2282,7 +2282,7 @@ function tcardHTML(o,s,showDone){
  let frontSlot='',backInner='',hintLine='';
  if(s){
   frontSlot=`<img id="timgf${o}">`;
-  backInner=`<img class="tthumb" id="timgb${o}">`;
+  backInner=`<img class="tthumb" id="timgb${o}"><button class="mini retake" data-o="${o}">↻ 重拍这张</button>`;
  }else{
   frontSlot=`<button class="btn btn-brown tpick">📷 拍摄</button><button class="mini tdemo">没有相机？用示例图</button>`;
   backInner='';
@@ -2328,6 +2328,12 @@ function renderTrial(flipO){
   b.onclick=function(){
    const o=+b.closest('.tcard').dataset.i;
    useDemo('门之眼试炼 · '+TRIAL[o].term,function(id){flowTrial(o,id)});
+  };
+ });
+ $$('#trialGrid .retake').forEach(function(b){
+  b.onclick=function(){
+   const o=+b.closest('.tcard').dataset.i;
+   pickPhoto(function(id){flowTrial(o,id)});
   };
  });
  if(flipO!=null){
@@ -2771,7 +2777,7 @@ function renderL1(){
   const isLight=(i===2);
   const isHero=(i===state.heroSlot);
   let ph='';
-  if(s&&s.p)ph=`<img id="l1img${i}">`;
+  if(s&&s.p)ph=`<img id="l1img${i}"><button class="mini retake" data-slot="${i}">↻ 重拍</button>`;
   else ph=`<button class="btn btn-brown pick">📷 拍摄/选图</button><button class="mini demobtn">没有相机？用示例图</button>`;
   let body='';
   if(isHero){
@@ -2815,6 +2821,18 @@ function renderL1(){
    const i=+b.closest('.slotcard').dataset.i;
    const label=(i===2)?'第一关 · 追光角落':'第一关 · 被忽略的角落';
    useDemo(label,function(id){state.l1[i]=state.l1[i]||{};state.l1[i].p=id;save();renderL1()});
+  };
+ });
+ $$('#l1Slots .retake').forEach(function(b){
+  b.onclick=function(){
+   const i=+b.dataset.slot;
+   pickPhoto(function(id){
+    state.l1[i]=state.l1[i]||{};
+    state.l1[i].p=id;
+    if(i===state.heroSlot){state.hero=id;toast('主角角落照片已同步更新')}
+    save();
+    renderL1();
+   });
   };
  });
  $$('#l1Slots .tin').forEach(function(inp){
@@ -2883,7 +2901,7 @@ function renderL2(){
  let html='';
  state.l2.forEach(function(s,i){
   let ph='';
-  if(s)ph=`<img id="l2img${i}"><div class="tagrow"><span class="tag">${s.dist}</span><span class="tag">${s.post}</span></div>`;
+  if(s)ph=`<img id="l2img${i}"><div class="tagrow"><span class="tag">${s.dist}</span><span class="tag">${s.post}</span></div><button class="mini retake" data-slot="${i}">↻ 重拍</button>`;
   else ph=`<button class="btn btn-brown pick">📷 拍摄/选图</button><button class="mini demobtn">没有相机？用示例图</button>`;
   html+=`<div class="slotcard" data-i="${i}"><div class="slothead"><span class="tag big">${L2_LABELS[i]}</span> 拍摄位 ${CNUM[i]}</div><div class="photoarea">${ph}</div><div class="dim">拍完立刻打标（两栏都要选）——第四关会照着填。</div></div>`;
  });
@@ -2941,7 +2959,7 @@ function renderL3(){
  state.l3.forEach(function(s,i){
   let ph='',fb='';
   if(s){
-   ph=`<img id="l3img${i}">`;
+   ph=`<img id="l3img${i}"><button class="mini retake" data-slot="${i}">↻ 重拍</button>`;
    fb=`<div class="termchip">${shotFB(s)}</div>`;
   }else{
    ph=`<button class="btn btn-brown pick">📷 拍摄/选图</button><button class="mini demobtn">没有相机？用示例图</button>`;
@@ -2974,6 +2992,18 @@ function bindShotSlots(sel,key,rerender){
   b.onclick=function(){
    const i=+b.closest('.slotcard').dataset.i;
    useDemo('',function(id){openTagFor(id,i,key,rerender)});
+  };
+ });
+ $$(c,'.retake').forEach(function(b){
+  b.onclick=function(){
+   const i=+b.closest('.slotcard').dataset.i;
+   pickPhoto(function(id){
+    if(state[key][i])state[key][i].p=id;
+    else state[key][i]={p:id};
+    save();
+    rerender();
+    toast('已重拍，原来的打标保留');
+   });
   };
  });
 }
